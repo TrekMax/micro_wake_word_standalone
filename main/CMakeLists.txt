@@ -1,0 +1,26 @@
+idf_component_register(
+    SRCS 
+        "esphome/components/micro_wake_word/micro_wake_word.cpp"
+        "esphome/components/micro_wake_word/streaming_model.cpp"
+        "esphome/components/i2s_audio/microphone/i2s_audio_microphone.cpp"
+        "esphome/components/i2s_audio/i2s_audio.cpp"
+        "esphome/core/helpers.cpp"
+        "esphome/core/component.cpp"
+        "esphome/core/ring_buffer.cpp"
+        "hey_jarvis_detection/main.cpp"
+    INCLUDE_DIRS
+        "." 
+        "include"
+        "include/esphome/core"
+        "include/esphome/components/micro_wake_word"
+        "include/esphome/components/microphone"
+        "include/esphome/components/i2s_audio"
+        "include/esphome/components/i2s_audio/microphone"
+    REQUIRES
+        "esp_common"
+        "esp_driver_i2s"
+        "esp_system"
+        "esp_timer"
+        "freertos"
+        "log"
+)
