@@ -170,7 +170,7 @@ namespace esphome
 
             // Detect the wake word if the sliding window average is above the cutoff
             if (sliding_window_average > this->probability_cutoff_) {
-                ESP_LOGD(TAG,
+                ESP_LOGI(TAG,
                          "The '%s' model sliding average probability is %.3f and most recent "
                          "probability is %.3f",
                          this->wake_word_.c_str(), sliding_window_average,

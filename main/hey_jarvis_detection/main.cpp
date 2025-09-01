@@ -6,7 +6,13 @@
 #include "streaming_model.h"
 
 // tflite model for "Hey Jarvis"
-#include "hey_jarvis.h"
+// #include "hey_jarvis.h"
+extern const uint8_t model_alexa_start[] asm("_binary_alexa_tflite_start");
+extern const uint8_t model_alexa_end[]   asm("_binary_alexa_tflite_end");
+extern const uint8_t model_nihaowenwen_start[] asm("_binary_nihaowenwen_tflite_start");
+extern const uint8_t model_nihaowenwen_end[]   asm("_binary_nihaowenwen_tflite_end");
+extern const uint8_t model_nihaowenwen_v2_start[] asm("_binary_nihaowenwen_v2_tflite_start");
+extern const uint8_t model_nihaowenwen_v2_end[]   asm("_binary_nihaowenwen_v2_tflite_end");
 
 // INMP441 microphone
 #define I2S_BCK_PIN    GPIO_NUM_1
@@ -38,10 +44,16 @@ void wakeWordDetectionTask(void *params)
 
     // set up the wake word detector
     esphome::micro_wake_word::MicroWakeWord wakeWord;
-    uint8_t *model = const_cast<uint8_t *>(hey_jarvis_tflite);
+    // uint8_t *model = const_cast<uint8_t *>(hey_jarvis_tflite);
+    uint8_t *model_alexa = const_cast<uint8_t *>(model_alexa_start);
+    uint8_t *model = const_cast<uint8_t *>(model_nihaowenwen_start);
+    // uint8_t *model = const_cast<uint8_t *>(model_nihaowenwen_v2_start);
 
     wakeWord.set_microphone(&microphone);
-    wakeWord.add_wake_word_model(model, 0.97f, 5, "Hey Jarvis", 22940);
+    // wakeWord.add_wake_word_model(model, 0.97f, 5, "Hey Jarvis", 22940);
+    wakeWord.add_wake_word_model(model_alexa, 0.97f, 5, "Alexa", 22348);
+    wakeWord.add_wake_word_model(model, 0.5f, 5, "你好问问", 40000); // Increased from 25000 to 40000 to support model memory needs
+    // wakeWord.add_wake_word_model(model, 0.5f, 5, "你好问问", 60000); // Increased from 25000 to 40000 to support model memory needs
     wakeWord.set_features_step_size(10);
     wakeWord.add_detection_callback(&wakeWordDetected);
 

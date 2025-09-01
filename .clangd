@@ -1,0 +1,6 @@
+CompileFlags:
+  Remove: 
+    - "-mtune=nuclei-300-series"
+    - "-march=rv32imac_zba_zbb_zbc_zbs"
+  Add:
+    - "-march=rv32imac" 

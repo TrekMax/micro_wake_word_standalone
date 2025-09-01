@@ -129,7 +129,7 @@ namespace esphome
                 }
                 this->update_model_probabilities_();
                 if (this->detect_wake_words_()) {
-                    ESP_LOGD(TAG, "Wake Word '%s' Detected", (this->detected_wake_word_).c_str());
+                    ESP_LOGI(TAG, "Wake Word '%s' Detected", (this->detected_wake_word_).c_str());
                     this->detected_ = true;
                     this->set_state_(State::STOP_MICROPHONE);
                 }

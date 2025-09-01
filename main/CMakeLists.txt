@@ -23,4 +23,9 @@ idf_component_register(
         "esp_timer"
         "freertos"
         "log"
+    EMBED_FILES
+        # "hey_jarvis_detection/hey_jarvis.tflite"
+        "hey_jarvis_detection/alexa.tflite"
+        "hey_jarvis_detection/nihaowenwen.tflite"
+        "hey_jarvis_detection/nihaowenwen_v2.tflite"
 )
