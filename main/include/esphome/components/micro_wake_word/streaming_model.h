@@ -61,8 +61,8 @@ namespace esphome
             void log_model_config() override;
 
             /// @brief Checks for the wake word by comparing the mean probability in the
-            /// sliding window with the probability cutoff
-            /// @return True if wake word is detected, false otherwise
+            /// 在滑动窗口中将平均概率与概率阈值进行比较
+            /// @return 如果检测到唤醒词则为 True，否则为 False
             bool determine_detected() override;
 
             const std::string &get_wake_word() const
@@ -82,9 +82,9 @@ namespace esphome
 
             void log_model_config() override;
 
-            /// @brief Checks for voice activity by comparing the max probability in the
-            /// sliding window with the probability cutoff
-            /// @return True if voice activity is detected, false otherwise
+            /// @brief 通过比较滑动窗口中的最大概率与概率阈值
+            /// 来检查语音活动
+            /// @return 如果检测到语音活动则为 True，否则为 False
             bool determine_detected() override;
         };
 

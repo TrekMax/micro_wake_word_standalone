@@ -28,4 +28,7 @@ idf_component_register(
         "hey_jarvis_detection/alexa.tflite"
         "hey_jarvis_detection/nihaowenwen.tflite"
         "hey_jarvis_detection/nihaowenwen_v2.tflite"
+        "hey_jarvis_detection/xiaolingxiaoling.tflite"
+        "hey_jarvis_detection/XLXL_V3.tflite"
+        "hey_jarvis_detection/XLXL_V4.tflite"
 )

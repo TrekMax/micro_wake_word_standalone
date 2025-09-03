@@ -176,6 +176,12 @@ namespace esphome
                          this->wake_word_.c_str(), sliding_window_average,
                          this->recent_streaming_probabilities_[this->last_n_index_] / (255.0));
                 return true;
+            } else {
+                // ESP_LOGI(TAG,
+                //          "The '%s' model sliding average probability is %.3f and most recent "
+                //          "probability is %.3f",
+                //          this->wake_word_.c_str(), sliding_window_average,
+                //          this->recent_streaming_probabilities_[this->last_n_index_] / (255.0));
             }
             return false;
         }
