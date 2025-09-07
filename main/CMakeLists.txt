@@ -7,7 +7,7 @@ idf_component_register(
         "esphome/core/helpers.cpp"
         "esphome/core/component.cpp"
         "esphome/core/ring_buffer.cpp"
-        "hey_jarvis_detection/main.cpp"
+        "main.cpp"
     INCLUDE_DIRS
         "." 
         "include"
@@ -24,11 +24,11 @@ idf_component_register(
         "freertos"
         "log"
     EMBED_FILES
-        # "hey_jarvis_detection/hey_jarvis.tflite"
-        "hey_jarvis_detection/alexa.tflite"
-        "hey_jarvis_detection/nihaowenwen.tflite"
-        "hey_jarvis_detection/nihaowenwen_v2.tflite"
-        "hey_jarvis_detection/xiaolingxiaoling.tflite"
-        "hey_jarvis_detection/XLXL_V3.tflite"
-        "hey_jarvis_detection/XLXL_V4.tflite"
+        "models/hey_jarvis.tflite"
+        "models/alexa.tflite"
+        "models/nihaowenwen.tflite"
+        "models/nihaowenwen_v2.tflite"
+        "models/xiaolingxiaoling.tflite"
+        "models/XLXL_V3.tflite"
+        "models/XLXL_V4.tflite"
 )
