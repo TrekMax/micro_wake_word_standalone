@@ -7,6 +7,7 @@ idf_component_register(
         "esphome/core/helpers.cpp"
         "esphome/core/component.cpp"
         "esphome/core/ring_buffer.cpp"
+        "test_audio.cpp"
         "main.cpp"
     INCLUDE_DIRS
         "." 

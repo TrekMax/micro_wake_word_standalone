@@ -64,6 +64,18 @@ namespace esphome
                 // Verify input tensor matches expected values
                 // Dimension 3 will represent the first layer stride, so skip it may vary
                 TfLiteTensor *input = this->interpreter_->input(0);
+                
+                // 调试：记录输入张量详细信息
+                ESP_LOGI(TAG, "=== ESPHOME INPUT TENSOR DEBUG ===");
+                ESP_LOGI(TAG, "Input tensor info:");
+                ESP_LOGI(TAG, "  Type: %d", input->type);
+                ESP_LOGI(TAG, "  Dims: %d", input->dims->size);
+                for (int i = 0; i < input->dims->size; i++) {
+                    ESP_LOGI(TAG, "  Dim[%d]: %d", i, input->dims->data[i]);
+                }
+                ESP_LOGI(TAG, "  Bytes: %d", input->bytes);
+                ESP_LOGI(TAG, "  Expected feature size: %d", PREPROCESSOR_FEATURE_SIZE);
+                
                 if ((input->dims->size != 3) || (input->dims->data[0] != 1) ||
                     (input->dims->data[2] != PREPROCESSOR_FEATURE_SIZE)) {
                     ESP_LOGE(TAG, "Streaming model tensor input dimensions has improper dimensions.");
@@ -88,6 +100,12 @@ namespace esphome
             }
 
             ESP_LOGI(TAG, "Actual tensor arena size is %d", this->interpreter_->arena_used_bytes());
+            
+            // === 调试：详细的张量竞技场信息 ===
+            ESP_LOGI(TAG, "=== ESPHOME TENSOR ARENA DEBUG ===");
+            ESP_LOGI(TAG, "Allocated tensor arena size: %d bytes", (int)this->tensor_arena_size_);
+            ESP_LOGI(TAG, "Used tensor arena size: %d bytes", this->interpreter_->arena_used_bytes());
+            ESP_LOGI(TAG, "Variable arena size: %d bytes", STREAMING_MODEL_VARIABLE_ARENA_SIZE);
 
             return true;
         }
@@ -127,11 +145,57 @@ namespace esphome
 
                     TfLiteTensor *output = this->interpreter_->output(0);
 
+                    // === 调试：详细分析模型输出 ===
+                    static bool logged_output_info = false;
+                    if (!logged_output_info) {
+                        ESP_LOGI(TAG, "=== ESPHOME MODEL OUTPUT DEBUG ===");
+                        ESP_LOGI(TAG, "Output tensor type: %d", output->type);
+                        ESP_LOGI(TAG, "Output tensor dims: %d", output->dims->size);
+                        for (int i = 0; i < output->dims->size; i++) {
+                            ESP_LOGI(TAG, "  Dim[%d]: %d", i, output->dims->data[i]);
+                        }
+                        ESP_LOGI(TAG, "Output tensor bytes: %d", output->bytes);
+                        
+                        // 检查量化参数
+                        if (output->type == kTfLiteUInt8) {
+                            ESP_LOGI(TAG, "UInt8 quantization params: scale=%.6f, zero_point=%d", 
+                                    output->params.scale, output->params.zero_point);
+                        }
+                        logged_output_info = true;
+                    }
+
+                    uint8_t raw_probability = output->data.uint8[0];
+                    
+                    // 调试：记录模型输出的详细信息
+                    static int inference_count = 0;
+                    inference_count++;
+                    if (inference_count % 100 == 0 || raw_probability > 20) {
+                        ESP_LOGI(TAG, "ESPHome inference #%d: raw_uint8=%d (%.6f), scale=%.6f, zero_point=%d", 
+                                inference_count, raw_probability, raw_probability/255.0f,
+                                output->params.scale, output->params.zero_point);
+                        
+                        if (output->params.scale != 0.0f) {
+                            float dequantized = (raw_probability - output->params.zero_point) * output->params.scale;
+                            ESP_LOGI(TAG, "Dequantized probability: %.6f", dequantized);
+                        }
+                    }
+
+                    // === 修复：使用正确的量化参数 ===
+                    // 将UInt8值转换为实际概率值，然后重新量化为0-255范围
+                    float actual_probability = (raw_probability - output->params.zero_point) * output->params.scale;
+                    uint8_t normalized_probability = (uint8_t)(actual_probability * 255.0f);
+                    
+                    // 调试：对比原始和修正后的值
+                    if (inference_count % 100 == 0 || raw_probability > 20) {
+                        ESP_LOGI(TAG, "Original formula: %.6f, Corrected formula: %.6f, normalized: %d", 
+                                raw_probability/255.0f, actual_probability, normalized_probability);
+                    }
+
                     ++this->last_n_index_;
                     if (this->last_n_index_ == this->sliding_window_size_) {
                         this->last_n_index_ = 0;
                     }
-                    this->recent_streaming_probabilities_[this->last_n_index_] = output->data.uint8[0]; // probability;
+                    this->recent_streaming_probabilities_[this->last_n_index_] = normalized_probability;
                 }
                 return true;
             }
@@ -165,23 +229,38 @@ namespace esphome
                 sum += prob;
             }
 
-            float sliding_window_average =
-                static_cast<float>(sum) / static_cast<float>(255 * this->sliding_window_size_);
+            // 修正：使用正确的量化参数而不是 255
+            // 假设scale=0.003906, zero_point=0，那么正确的公式是: (raw_value - 0) * 0.003906
+            float scale = 0.003906f;  // 1.0f / 256.0f
+            int zero_point = 0;
+            
+            float sliding_window_average = 0.0f;
+            for (auto &prob : this->recent_streaming_probabilities_) {
+                sliding_window_average += (prob - zero_point) * scale;
+            }
+            sliding_window_average /= this->sliding_window_size_;
 
             // Detect the wake word if the sliding window average is above the cutoff
             if (sliding_window_average > this->probability_cutoff_) {
                 ESP_LOGI(TAG,
-                         "The '%s' model sliding average probability is %.3f and most recent "
-                         "probability is %.3f",
+                         "ESPHome CORRECTED: The '%s' model sliding average probability is %.6f and most recent "
+                         "probability is %.6f (raw=%d)",
                          this->wake_word_.c_str(), sliding_window_average,
-                         this->recent_streaming_probabilities_[this->last_n_index_] / (255.0));
+                         (this->recent_streaming_probabilities_[this->last_n_index_] - zero_point) * scale,
+                         this->recent_streaming_probabilities_[this->last_n_index_]);
                 return true;
             } else {
-                // ESP_LOGI(TAG,
-                //          "The '%s' model sliding average probability is %.3f and most recent "
-                //          "probability is %.3f",
-                //          this->wake_word_.c_str(), sliding_window_average,
-                //          this->recent_streaming_probabilities_[this->last_n_index_] / (255.0));
+                // 每100次记录一次调试信息
+                static int debug_count = 0;
+                debug_count++;
+                if (debug_count % 100 == 0) {
+                    ESP_LOGI(TAG,
+                             "ESPHome CORRECTED: The '%s' model sliding average probability is %.6f and most recent "
+                             "probability is %.6f (raw=%d)",
+                             this->wake_word_.c_str(), sliding_window_average,
+                             (this->recent_streaming_probabilities_[this->last_n_index_] - zero_point) * scale,
+                             this->recent_streaming_probabilities_[this->last_n_index_]);
+                }
             }
             return false;
         }

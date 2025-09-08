@@ -387,6 +387,36 @@ namespace esphome
                 FrontendProcessSamples(&this->frontend_state_, this->preprocessor_audio_buffer_,
                                        this->new_samples_to_get_(), &num_samples_read);
 
+            // === 调试：分析frontend输出 ===
+            static bool logged_frontend_info = false;
+            static int feature_generation_count = 0;
+            feature_generation_count++;
+            
+            if (!logged_frontend_info || feature_generation_count % 100 == 0) {
+                ESP_LOGI(TAG, "=== ESPHOME FEATURE DEBUG #%d ===", feature_generation_count);
+                ESP_LOGI(TAG, "Frontend output size: %d", frontend_output.size);
+                ESP_LOGI(TAG, "Samples needed: %d, samples read: %d", (int)this->new_samples_to_get_(), (int)num_samples_read);
+                
+                if (frontend_output.size > 0) {
+                    uint16_t feat_min = UINT16_MAX, feat_max = 0;
+                    for (int i = 0; i < frontend_output.size && i < 5; i++) {
+                        feat_min = std::min(feat_min, frontend_output.values[i]);
+                        feat_max = std::max(feat_max, frontend_output.values[i]);
+                        ESP_LOGI(TAG, "Raw frontend feature[%d]: %u", i, frontend_output.values[i]);
+                    }
+                    ESP_LOGI(TAG, "Raw frontend range: min=%u, max=%u", feat_min, feat_max);
+                }
+                logged_frontend_info = true;
+            }
+
+            // Log scaling parameters once
+            constexpr int32_t value_scale = 256;
+            constexpr int32_t value_div = 666; // 666 = 25.6 * 26.0 after rounding
+            
+            if (feature_generation_count % 100 == 0) {
+                ESP_LOGI(TAG, "ESPHome scaling params: value_scale=%d, value_div=%d", (int)value_scale, (int)value_div);
+            }
+
             for (size_t i = 0; i < frontend_output.size; ++i) {
                 // These scaling values are set to match the TFLite audio frontend int8
                 // output. The feature pipeline outputs 16-bit signed integers in roughly a
@@ -400,9 +430,9 @@ namespace esphome
                 // input, we have to perform: input = (((feature / 25.6) / 26.0) * 256) -
                 // 128 To simplify this and perform it in 32-bit integer math, we rearrange
                 // to: input = (feature * 256) / (25.6 * 26.0) - 128
-                constexpr int32_t value_scale = 256;
-                constexpr int32_t value_div = 666; // 666 = 25.6 * 26.0 after rounding
-                int32_t value = ((frontend_output.values[i] * value_scale) + (value_div / 2)) / value_div;
+                
+                uint16_t raw_feature = frontend_output.values[i];
+                int32_t value = ((raw_feature * value_scale) + (value_div / 2)) / value_div;
                 value -= 128;
                 if (value < -128) {
                     value = -128;
@@ -411,6 +441,17 @@ namespace esphome
                     value = 127;
                 }
                 features[i] = value;
+                
+                // 调试：记录特征转换的详细过程
+                if (feature_generation_count % 100 == 0 && i < 5) {
+                    ESP_LOGI(TAG, "ESPHome conversion[%d]: raw=%u -> scaled=%d -> final=%d", 
+                            (int)i, raw_feature, (int)value, (int)features[i]);
+                }
+            }
+
+            if (feature_generation_count % 100 == 0) {
+                ESP_LOGI(TAG, "Final int8 features[0-4]: [%d,%d,%d,%d,%d]", 
+                        (int)features[0], (int)features[1], (int)features[2], (int)features[3], (int)features[4]);
             }
 
             return true;
